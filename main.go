@@ -1,7 +1,9 @@
 package main
 
-import "github.com/DaegunHan/hancoin/explorer"
+import (
+	"github.com/DaegunHan/hancoin/rest"
+)
 
 func main() {
-	explorer.Start()
+	rest.Start(4000)
 }
