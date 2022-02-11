@@ -18,15 +18,15 @@ func DB() *bolt.DB {
 	if db == nil {
 		dbPointer, err := bolt.Open(dbName, 0600, nil)
 		db = dbPointer
-		utils.HandleFunc(err)
+		utils.HandleErr(err)
 		err = db.Update(func(t *bolt.Tx) error {
 			_, err := t.CreateBucketIfNotExists([]byte(dataBucket))
-			utils.HandleFunc(err)
+			utils.HandleErr(err)
 			_, err = t.CreateBucketIfNotExists([]byte(blocksBucket))
-			utils.HandleFunc(err)
+			utils.HandleErr(err)
 			return err
 		})
-		utils.HandleFunc(err)
+		utils.HandleErr(err)
 	}
 	return db
 }
@@ -41,7 +41,7 @@ func SaveBlock(hash string, data []byte) {
 		err := bucket.Put([]byte(hash), data)
 		return err
 	})
-	utils.HandleFunc(err)
+	utils.HandleErr(err)
 }
 
 func SaveCheckpoint(data []byte) {
@@ -50,7 +50,7 @@ func SaveCheckpoint(data []byte) {
 		err := bucket.Put([]byte(checkpoint), data)
 		return err
 	})
-	utils.HandleFunc(err)
+	utils.HandleErr(err)
 }
 
 func Checkpoint() []byte {

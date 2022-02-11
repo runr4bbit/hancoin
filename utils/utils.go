@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func HandleFunc(err error) {
+func HandleErr(err error) {
 	if err != nil {
 		log.Panic(err)
 	}
@@ -17,13 +17,13 @@ func HandleFunc(err error) {
 func ToBytes(i interface{}) []byte {
 	var aBuffer bytes.Buffer
 	encoder := gob.NewEncoder(&aBuffer)
-	HandleFunc(encoder.Encode(i))
+	HandleErr(encoder.Encode(i))
 	return aBuffer.Bytes()
 }
 
 func FromBytes(i interface{}, data []byte) {
 	decoder := gob.NewDecoder(bytes.NewReader(data))
-	HandleFunc(decoder.Decode(i))
+	HandleErr(decoder.Decode(i))
 }
 
 func Hash(i interface{}) string {
