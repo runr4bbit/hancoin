@@ -1,7 +1,8 @@
 package blockchain
 
 import (
-	"fmt"
+	"encoding/json"
+	"net/http"
 	"sync"
 
 	"github.com/DaegunHan/hancoin/db"
@@ -19,6 +20,7 @@ type blockchain struct {
 	NewestHash        string `json:"newestHash"`
 	Height            int    `json:"height"`
 	CurrentDifficulty int    `json:"currentDifficulty"`
+	m                 sync.Mutex
 }
 
 var b *blockchain
@@ -32,27 +34,30 @@ func persistBlockchain(b *blockchain) {
 	db.SaveCheckpoint(utils.ToBytes(b))
 }
 
-func (b *blockchain) AddBlock() {
+func (b *blockchain) AddBlock() *Block {
 	block := createBlock(b.NewestHash, b.Height+1, getDifficulty(b))
 	b.NewestHash = block.Hash
 	b.Height = block.Height
 	b.CurrentDifficulty = block.Difficulty
 	persistBlockchain(b)
+	return block
 }
 
 func Blocks(b *blockchain) []*Block {
-	var blocks []*Block
+	b.m.Lock()
+	defer b.m.Unlock()
+	var newBlocks []*Block
 	hashCursor := b.NewestHash
 	for {
 		block, _ := FindBlock(hashCursor)
-		blocks = append(blocks, block)
+		newBlocks = append(newBlocks, block)
 		if block.PrevHash != "" {
 			hashCursor = block.PrevHash
 		} else {
 			break
 		}
 	}
-	return blocks
+	return newBlocks
 }
 
 func Txs(b *blockchain) []*Tx {
@@ -73,9 +78,9 @@ func FindTx(b *blockchain, targetID string) *Tx {
 }
 
 func recalculateDifficulty(b *blockchain) int {
-	allBlocks := Blocks(b)
-	newestBlock := allBlocks[0]
-	lastRecalculatedBlock := allBlocks[difficultyInterval-1]
+	allnewBlocks := Blocks(b)
+	newestBlock := allnewBlocks[0]
+	lastRecalculatedBlock := allnewBlocks[difficultyInterval-1]
 	actualTime := (newestBlock.Timestamp / 60) - (lastRecalculatedBlock.Timestamp / 60)
 	expectedTime := difficultyInterval * blockInterval
 	if actualTime <= (expectedTime - allowedRange) {
@@ -145,6 +150,45 @@ func Blockchain() *blockchain {
 			b.restore(checkpoint)
 		}
 	})
-	fmt.Println(b.NewestHash)
 	return b
+}
+
+func Status(b *blockchain, rw http.ResponseWriter) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	json.NewEncoder(rw).Encode(b)
+}
+
+func (b *blockchain) Replace(newBlocks []*Block) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	b.CurrentDifficulty = newBlocks[0].Difficulty
+	b.Height = len(newBlocks)
+	b.NewestHash = newBlocks[0].Hash
+	persistBlockchain(b)
+	db.EmptyBlocks()
+	for _, block := range newBlocks {
+		persistBlock(block)
+	}
+}
+
+func (b *blockchain) AddPeerBlock(newBlock *Block) {
+	b.m.Lock()
+	m.m.Lock()
+	defer b.m.Unlock()
+	defer m.m.Unlock()
+
+	b.Height += 1
+	b.CurrentDifficulty = newBlock.Difficulty
+	b.NewestHash = newBlock.Hash
+
+	persistBlockchain(b)
+	persistBlock(newBlock)
+
+	for _, tx := range newBlock.Transactions {
+		_, ok := m.Txs[tx.ID]
+		if ok {
+			delete(m.Txs, tx.ID)
+		}
+	}
 }
