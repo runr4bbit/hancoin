@@ -30,7 +30,6 @@ func AddPeer(address, port, openPort string, broadcast bool) {
 	p := initPeer(conn, address, port)
 	if broadcast {
 		broadcastNewPeer(p)
-		return
 	}
 	sendNewestBlock(p)
 }
